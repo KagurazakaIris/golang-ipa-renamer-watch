@@ -1,40 +1,49 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"regexp"
+	"syscall"
 
 	"github.com/fsnotify/fsnotify"
 )
 
-func main() {
-	fmt.Println("golang-ipa-renamer-watch started.")
+// Precompile the IPA filename pattern for performance
+var ipaPattern = regexp.MustCompile(`^[^@]+@[^@]+\.ipa$`)
 
-	// Read config from environment variables
+func main() {
+	// INFO: print startup environment
 	watchDir := os.Getenv("WATCH_DIR")
 	if watchDir == "" {
-		watchDir = "."
+		watchDir = "./watched"
 	}
-	ipaRenamer := os.Getenv("IPA_RENAMER")
-	if ipaRenamer == "" {
-		ipaRenamer = "./ipa_renamer"
+	iparenamer := os.Getenv("IPA_RENAMER")
+	if iparenamer == "" {
+		iparenamer = "./ipa_renamer"
 	}
 	outputDir := os.Getenv("OUTPUT_DIR")
 	if outputDir == "" {
-		outputDir = watchDir
+		outputDir = "./output"
 	}
+	log.Printf("[INFO] golang-ipa-renamer-watch starting with\nWATCH_DIR=%s,\nIPA_RENAMER=%s,\nOUTPUT_DIR=%s", watchDir, iparenamer, outputDir)
 
+	// Initialize file watcher
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("[ERROR] failed to create watcher: %v", err)
 	}
 	defer watcher.Close()
 
+	// Setup signal handling for graceful shutdown
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	done := make(chan bool)
+
+	// event processing
 	go func() {
 		for {
 			select {
@@ -42,18 +51,24 @@ func main() {
 				if !ok {
 					return
 				}
-				if event.Op&fsnotify.Create == fsnotify.Create {
+				// DEBUG: capture file write events
+				if event.Op&fsnotify.Write != 0 {
+					log.Printf("[DEBUG] write event for %s", event.Name)
 					if filepath.Ext(event.Name) == ".ipa" {
 						filename := filepath.Base(event.Name)
-						matched, _ := regexp.MatchString(`^[^@]+@[^@]+\.ipa$`, filename)
-						if !matched {
-							cmd := exec.Command(ipaRenamer, event.Name, "-o", outputDir)
-							cmd.Stdout = os.Stdout
-							cmd.Stderr = os.Stderr
-							err := cmd.Run()
-							if err != nil {
-								log.Printf("Failed to rename %s: %v", filename, err)
-							}
+						if ipaPattern.MatchString(filename) {
+							log.Printf("[DEBUG] skipping already correct name %s", filename)
+							continue
+						}
+						// INFO: renaming action
+						cmd := exec.Command(iparenamer, "-o", outputDir, "--", event.Name)
+						cmd.Stdout = os.Stdout
+						cmd.Stderr = os.Stderr
+						err := cmd.Run()
+						if err != nil {
+							log.Printf("[ERROR] failed to rename %s: %v", filename, err)
+						} else {
+							log.Printf("[INFO] renamed %s successfully", filename)
 						}
 					}
 				}
@@ -61,14 +76,24 @@ func main() {
 				if !ok {
 					return
 				}
-				log.Println("error:", err)
+				log.Printf("[ERROR] watcher error: %v", err)
+			case sig := <-sigs:
+				log.Printf("[INFO] received signal %s, shutting down", sig)
+				done <- true
+				return
 			}
 		}
 	}()
 
+	// Begin watching the target directory
 	err = watcher.Add(watchDir)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("[ERROR] failed to watch directory %s: %v", watchDir, err)
 	}
+
+	// INFO: monitoring started
+	log.Printf("[INFO] monitoring directory %s for .ipa changes", watchDir)
+
 	<-done
+	log.Println("[INFO] shutdown complete")
 }
