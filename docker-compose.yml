@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  ipa-renamer-watch:
+    build: .
+    image: ipa-renamer-watch:latest
+    container_name: ipa-renamer-watch
+    environment:
+      - WATCH_DIR=/app
+      - IPA_RENAMER=/app/ipa_renamer
+      - OUTPUT_DIR=/app
+    volumes:
+      - ./ipa_renamer:/app/ipa_renamer
+      - ./watched:/app
+    restart: unless-stopped
