@@ -9,6 +9,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 
 FROM alpine:3.20
 WORKDIR /app
+LABEL org.opencontainers.image.description="跨平台 Go 目录监听自动重命名 IPA 工具，支持自定义模板、Docker、GHCR 多平台镜像。"
 COPY --from=builder /app/ipa-renamer /app/ipa-renamer
 RUN chmod +x /app/ipa-renamer
 ENV WATCH_DIR=/app/watched

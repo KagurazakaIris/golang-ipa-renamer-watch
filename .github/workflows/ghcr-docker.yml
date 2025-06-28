@@ -40,3 +40,5 @@ jobs:
           provenance: true
           sbom: true
           tags: ghcr.io/kagurazakairis/golang-ipa-renamer-watch:latest
+          annotations: |
+            org.opencontainers.image.description=跨平台 Go 目录监听自动重命名 IPA 工具，支持自定义模板、Docker、GHCR 多平台镜像。
