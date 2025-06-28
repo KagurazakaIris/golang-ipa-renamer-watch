@@ -1,15 +1,19 @@
-# syntax=docker/dockerfile:1
-FROM golang:1.22-alpine as builder
+# syntax=docker/dockerfile:1.7
+FROM --platform=$BUILDPLATFORM golang:1.22-alpine AS builder
 WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
 COPY . .
-RUN go build -o ipa-renamer-watch main.go
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o ipa-renamer .
 
 FROM alpine:3.20
 WORKDIR /app
-COPY --from=builder /app/ipa-renamer-watch /app/ipa-renamer-watch
-COPY --from=builder /app/ipa_renamer /app/ipa_renamer
-RUN chmod +x /app/ipa-renamer-watch /app/ipa_renamer
+LABEL org.opencontainers.image.description="跨平台 Go 目录监听自动重命名 IPA 工具，支持自定义模板、Docker、GHCR 多平台镜像。"
+COPY --from=builder /app/ipa-renamer /app/ipa-renamer
+RUN chmod +x /app/ipa-renamer
 ENV WATCH_DIR=/app/watched
-ENV IPA_RENAMER=/app/ipa_renamer
 ENV OUTPUT_DIR=/app/output
-CMD ["/app/ipa-renamer-watch"]
+ENV TEMPLATE=$raw@$CFBundleIdentifier
+ENV TEMP_DIR=/app/temp
+CMD ["/app/ipa-renamer"]
