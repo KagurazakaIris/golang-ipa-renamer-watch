@@ -5,7 +5,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 RUN --mount=type=cache,target=/root/.cache/go-build \
-    GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o ipa-renamer main.go
+    GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o ipa-renamer .
 
 FROM alpine:3.20
 WORKDIR /app

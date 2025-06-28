@@ -8,11 +8,13 @@ on:
 
 jobs:
   build-and-push:
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,12 +34,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image (multi-platform, parallel)
+      - name: Build and push Docker image (${{ matrix.arch }})
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/${{ matrix.arch }}
           provenance: true
           sbom: true
-          tags: ghcr.io/kagurazakairis/golang-ipa-renamer-watch:latest
+          tags: ghcr.io/kagurazakairis/golang-ipa-renamer-watch:${{ matrix.arch }},ghcr.io/kagurazakairis/golang-ipa-renamer-watch:latest
