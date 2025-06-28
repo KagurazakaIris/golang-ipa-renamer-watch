@@ -8,9 +8,6 @@ on:
 
 jobs:
   build-and-push:
-    strategy:
-      matrix:
-        arch: [amd64, arm64]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -34,12 +31,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image (${{ matrix.arch }})
+      - name: Build and push Docker image (multi-platform)
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          platforms: linux/${{ matrix.arch }}
+          platforms: linux/amd64,linux/arm64
           provenance: true
           sbom: true
-          tags: ghcr.io/kagurazakairis/golang-ipa-renamer-watch:${{ matrix.arch }},ghcr.io/kagurazakairis/golang-ipa-renamer-watch:latest
+          tags: ghcr.io/kagurazakairis/golang-ipa-renamer-watch:latest
