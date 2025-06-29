@@ -85,8 +85,16 @@ func main() {
 							continue
 						}
 						cfg.Glob = path // single file
+						if _, err := os.Stat(path); os.IsNotExist(err) {
+							log.Printf("[INFO] file %s does not exist, skip rename", filename)
+							continue
+						}
 						if err := renameIPA(cfg, path); err != nil {
-							log.Printf("[ERROR] failed to rename %s: %v", filename, err)
+							if os.IsNotExist(err) {
+								log.Printf("[INFO] file %s disappeared before rename, skip", filename)
+							} else {
+								log.Printf("[ERROR] failed to rename %s: %v", filename, err)
+							}
 						} else {
 							log.Printf("[INFO] renamed %s successfully", filename)
 						}
