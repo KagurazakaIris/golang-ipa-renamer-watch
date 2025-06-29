@@ -68,8 +68,8 @@ func main() {
 				if !ok {
 					return
 				}
-				if event.Op&fsnotify.Write != 0 {
-					log.Printf("[DEBUG] write event for %s", event.Name)
+				if event.Op&(fsnotify.Create|fsnotify.Write|fsnotify.Rename) != 0 {
+					log.Printf("[DEBUG] file event for %s (op: %s)", event.Name, event.Op)
 					if filepath.Ext(event.Name) == ".ipa" {
 						filename := filepath.Base(event.Name)
 						if ipaPattern.MatchString(filename) {

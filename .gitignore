@@ -24,3 +24,5 @@ go.work.sum
 # env file
 .env
 oryxBuildBinary
+app/output/a@com.google.ios.youtube.ipa
+app/watched/a.ipa

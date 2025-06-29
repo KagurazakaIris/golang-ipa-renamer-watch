@@ -84,7 +84,7 @@ func getInfoPlist(cfg Config, ipaPath string) (string, error) {
 			return outPath, nil
 		}
 	}
-	return "", fmt.Errorf("Info.plist not found")
+	return "", fmt.Errorf("info.plist not found")
 }
 
 func matchPlist(path string) bool {
