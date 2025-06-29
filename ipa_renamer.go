@@ -44,15 +44,13 @@ func renameIPA(cfg Config, path string) error {
 		return fmt.Errorf("CFBundleIdentifier not found")
 	}
 
-	newName := strings.ReplaceAll(cfg.Template, "$CFBundleIdentifier", cfBundleIdentifier)
 	rawName := strings.TrimSuffix(filepath.Base(path), ".ipa")
 	if rawName == "" {
 		rawName = "unknown"
 	}
-	newName = strings.ReplaceAll(newName, "$raw", rawName)
-	if !strings.HasSuffix(newName, ".ipa") {
-		newName += ".ipa"
-	}
+	// 固定命名规则：原文件名@CFBundleIdentifier.ipa
+	newName := fmt.Sprintf("%s@%s.ipa", rawName, cfBundleIdentifier)
+
 	newPath := filepath.Join(cfg.Out, newName)
 	if _, err := copyFile(path, newPath); err != nil {
 		return err

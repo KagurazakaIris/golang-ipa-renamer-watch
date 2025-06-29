@@ -6,6 +6,8 @@ services:
     environment:
       - WATCH_DIR=/app/watched
       - OUTPUT_DIR=/app/output
+      - TEMP_DIR=/app/temp
+      # TEMPLATE 已废弃，无需设置
     volumes:
       - ./watched:/app/watched
       - ./output:/app/output
