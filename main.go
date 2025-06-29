@@ -6,7 +6,9 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"sync"
 	"syscall"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -61,6 +63,40 @@ func main() {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	done := make(chan bool)
 
+	// debounce map 和锁
+	var (
+		debounceMap = make(map[string]time.Time)
+		debounceMu  sync.Mutex
+	)
+	const debounceDelay = 2 * time.Second
+
+	// 定时处理静默文件
+	go func() {
+		for {
+			time.Sleep(1 * time.Second)
+			debounceMu.Lock()
+			for path, last := range debounceMap {
+				if time.Since(last) >= debounceDelay {
+					delete(debounceMap, path)
+					if filepath.Ext(path) == ".ipa" {
+						filename := filepath.Base(path)
+						if ipaPattern.MatchString(filename) {
+							log.Printf("[DEBUG] skipping already correct name %s", filename)
+							continue
+						}
+						cfg.Glob = path // single file
+						if err := renameIPA(cfg, path); err != nil {
+							log.Printf("[ERROR] failed to rename %s: %v", filename, err)
+						} else {
+							log.Printf("[INFO] renamed %s successfully", filename)
+						}
+					}
+				}
+			}
+			debounceMu.Unlock()
+		}
+	}()
+
 	go func() {
 		for {
 			select {
@@ -69,20 +105,10 @@ func main() {
 					return
 				}
 				if event.Op&(fsnotify.Create|fsnotify.Write|fsnotify.Rename) != 0 {
+					debounceMu.Lock()
+					debounceMap[event.Name] = time.Now()
+					debounceMu.Unlock()
 					log.Printf("[DEBUG] file event for %s (op: %s)", event.Name, event.Op)
-					if filepath.Ext(event.Name) == ".ipa" {
-						filename := filepath.Base(event.Name)
-						if ipaPattern.MatchString(filename) {
-							log.Printf("[DEBUG] skipping already correct name %s", filename)
-							continue
-						}
-						cfg.Glob = event.Name // single file
-						if err := renameIPA(cfg, event.Name); err != nil {
-							log.Printf("[ERROR] failed to rename %s: %v", filename, err)
-						} else {
-							log.Printf("[INFO] renamed %s successfully", filename)
-						}
-					}
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {

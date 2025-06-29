@@ -45,7 +45,11 @@ func renameIPA(cfg Config, path string) error {
 	}
 
 	newName := strings.ReplaceAll(cfg.Template, "$CFBundleIdentifier", cfBundleIdentifier)
-	newName = strings.ReplaceAll(newName, "$raw", strings.TrimSuffix(filepath.Base(path), ".ipa"))
+	rawName := strings.TrimSuffix(filepath.Base(path), ".ipa")
+	if rawName == "" {
+		rawName = "unknown"
+	}
+	newName = strings.ReplaceAll(newName, "$raw", rawName)
 	if !strings.HasSuffix(newName, ".ipa") {
 		newName += ".ipa"
 	}
